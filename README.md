@@ -95,5 +95,5 @@ ai_productivity_assistant/
 ---
 
 ## 👩‍💻 Author
-**Medha Sharma** B.E. Computer Science and Engineering | Thapar Institute of Engineering and Technology  
+**Medha Sharma** B.Tech. Computer Science and Engineering | Thapar Institute of Engineering and Technology  
 [LinkedIn](https://www.linkedin.com/in/medha-sharma-b024b0252/) · [GitHub](https://github.com/Medha-glitch)
