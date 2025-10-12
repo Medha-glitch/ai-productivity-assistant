@@ -210,4 +210,6 @@ __marimo__/
 models/
 *.pkl
 *.db
+.venv/
+__pycache__/
 
