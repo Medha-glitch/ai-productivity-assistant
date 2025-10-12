@@ -1,0 +1,12 @@
+# Core dependencies
+numpy
+pandas
+scikit-learn
+datasets
+tqdm
+
+# Web framework (for Flask UI later)
+flask
+
+# Optional: logging and utilities
+python-dotenv
