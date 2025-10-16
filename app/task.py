@@ -3,13 +3,14 @@ from datetime import datetime
 import re
 from string import punctuation
 import pickle
+from config import MODEL_DIR, DB_FILE, POS_THRESH, NEG_THRESH
+
 
 # -------------------------
 # Model loading (load once)
 # -------------------------
 MODEL_VEC = None
 MODEL_CLF = None
-MODEL_DIR = "models"
 
 def load_model_once():
     global MODEL_VEC, MODEL_CLF
@@ -43,7 +44,7 @@ def predict_sentiment_cached(text: str):
 # DB helpers
 # -------------------------
 def connect_db():
-    conn = sqlite3.connect("tasks.db")
+    conn = sqlite3.connect("DB_FILE")
     return conn
 
 # Creating tasks table
@@ -161,7 +162,7 @@ def view_tasks():
 # -------------------------
 # Journal
 # -------------------------
-def label_from_prob(p: float, pos_thresh=0.60, neg_thresh=0.40):
+def label_from_prob(p: float, pos_thresh=POS_THRESH, neg_thresh=NEG_THRESH):
     if p is None:
         return None
     if p >= pos_thresh:
@@ -216,6 +217,83 @@ def view_entries():
     conn.close()
     return rows
 
+# ------------ Simple rule based Recommender --------
+LEETCODE_SUGGESTIONS = {
+    "easy": [
+        "Two Sum (Array, HashMap)",
+        "Reverse Linked List (Linked List)",
+        "Valid Parentheses (Stack)"
+    ],
+    "medium": [
+        "Number of Islands (DFS/BFS)",
+        "Merge Intervals (Sorting + Greedy)",
+        "Binary Tree Level Order Traversal (BFS)"
+    ],
+    "hard": [
+        "LFU Cache (Design + Hash + DLL)",
+        "Word Ladder II (BFS + Backtracking)",
+        "Knapsack Problem (Dynamic Programming)"
+    ]
+}
+
+def recommend_for_latest(user_pref=None):
+    """
+    Looks at the most recent journal entry and returns recommendations.
+    user_pref can be 'coding' or 'wellness' to bias suggestions.
+    """
+
+    conn = connect_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT entry, sentiment, sentiment_prob FROM journal ORDER BY date_added DESC LIMIT 1")
+        row = cursor.fetchone()
+    except sqlite3.OperationalError:
+        row = None
+    conn.close()
+
+    if row in None:
+        return {
+            "message": "No journal entries yet.",
+            "Suggestions": ["Write your first journal entry!!"]
+        }
+    entry, sentiment, prob = row
+    suggestions = []
+    message = f"Latest sentiment: {sentiment} (p_pos={prob:.2f})"
+
+    if sentiment == "negative":
+        suggestions += [
+            "Take a 10-min walk or short break",
+            "Try deep breathing journaling your thoughts"
+        ] 
+        if user_pref == "coding":
+            suggestions += LEETCODE_SUGGESTIONS["easy"][:2]
+
+    elif sentiment == "neutral":
+        suggestions += [
+            "Organize your workspace or plan your next session",
+            "Do a short Pomodoro (25/5)"
+        ]
+        if user_pref == "coding":
+            suggestions += LEETCODE_SUGGESTIONS["medium"][:2]
+
+    elif sentiment == "Positive":
+        suggestions += [
+            "Ride the momentum - do one focused 50-min work block",
+            "Reward yourself after completing one major task"
+        ]
+        if user_pref == "coding":
+            suggestions += LEETCODE_SUGGESTIONS["hard"][:2]
+    else:
+        suggestions = ["Sentiment unknown - reflect for a moment or try writing again."]
+    
+    return{
+        "entry": entry,
+        "sentiment" : sentiment,
+        "probability": prob,
+        "suggestions": suggestions
+
+    }
+
 
 # ------ Text Cleaning --------
 URL_RE = re.compile(r'https?://\S+|www\.\S+')
@@ -263,7 +341,7 @@ if __name__ == "__main__":
     create_journal_table()
     ensure_journal_sentiment_column() # <<-- ensure column exists before inserts
     ensure_journal_sentiment_cols()
-    
+
     # Tasks
     add_task("Prepare resume for placements")
     add_task("Solve 2 LeetCode problems")
